@@ -1,0 +1,60 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI College Admin Dashboard</title>
+    <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+    <div class="dashboard">
+        <header class="topbar">
+            <div>
+                <h1>🎓 College Command Center</h1>
+                <p>AI Complaint Management System</p>
+            </div>
+            <div class="admin-badge">ADMIN PANEL</div>
+        </header>
+
+        <section class="stats">
+            <div class="stat-card">
+                <h3>Total Complaints</h3>
+                <p id="totalComplaints">0</p>
+            </div>
+            <div class="stat-card">
+                <h3>🔴 High Priority</h3>
+                <p id="highComplaints">0</p>
+            </div>
+            <div class="stat-card">
+                <h3>⏳ Pending</h3>
+                <p id="pendingComplaints">0</p>
+            </div>
+            <div class="stat-card">
+                <h3>✅ Resolved</h3>
+                <p id="resolvedComplaints">0</p>
+            </div>
+        </section>
+
+        <section class="complaints-panel">
+            <div class="panel-header">
+                <h2>📋 Complaint Management</h2>
+                <select id="filterStatus">
+                    <option value="All">All Status</option>
+                    <option value="Pending">Pending</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Resolved">Resolved</option>
+                </select>
+            </div>
+
+            <div id="adminComplaintList">
+                <p class="empty">Loading complaints...</p>
+            </div>
+        </section>
+    </div>
+
+    <script src="http://localhost:3000/socket.io/socket.io.js"></script>
+    <script src="admin.js"></script>
+</body>
+</html>
+```

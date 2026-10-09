@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI College Complaint Management</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header class="main-header">
+            <h1>🎓 AI College Complaint Management</h1>
+            <p>Report • Track • Resolve</p>
+        </header>
+
+        <section class="attendance-box">
+            <h2>Submit a Complaint</h2>
+
+            <input id="studentName" type="text"
+                   placeholder="Student Name" required>
+
+            <input id="rollNumber" type="text"
+                   placeholder="College Roll Number (e.g. 23CSE001)" required>
+
+            <input id="department" type="text"
+                   placeholder="Department (e.g. CSE, ECE)" required>
+
+            <select id="category" required>
+                <option value="">Select Category</option>
+                <option value="Infrastructure">Infrastructure</option>
+                <option value="Electrical">Electrical</option>
+                <option value="Equipment">Equipment</option>
+                <option value="Cleanliness">Cleanliness</option>
+                <option value="Other">Other</option>
+            </select>
+
+            <textarea id="complaint" rows="4"
+                      placeholder="Describe your complaint..." required></textarea>
+
+            <button id="submitBtn" type="button">Submit Complaint</button>
+            <p id="formMessage" role="status"></p>
+        </section>
+
+        <section class="tracking-box">
+            <h2>📋 Track My Complaints</h2>
+            <p>Enter your college roll number to see your complaints.</p>
+
+            <input id="trackRollNumber" type="text"
+                   placeholder="Enter College Roll Number">
+
+            <button id="trackBtn" type="button">Track Complaints</button>
+            <p id="trackMessage" role="status"></p>
+
+            <div id="complaintList">
+                <p class="empty">Enter your roll number to track complaints.</p>
+            </div>
+        </section>
+    </div>
+
+    <script src="http://localhost:3000/socket.io/socket.io.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

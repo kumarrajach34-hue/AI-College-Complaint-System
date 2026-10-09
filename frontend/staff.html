@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staff Dashboard | AI College</title>
+    <link rel="stylesheet" href="staff.css">
+</head>
+<body>
+    <main class="dashboard">
+        <header class="topbar">
+            <div>
+                <h1>🛠️ Staff Workspace</h1>
+                <p>AI College Complaint Management System</p>
+            </div>
+            <span class="staff-badge">STAFF PANEL</span>
+        </header>
+
+        <section class="welcome">
+            <h2>Assigned Complaints</h2>
+            <p>View assigned issues and update their progress.</p>
+        </section>
+
+        <section class="stats">
+            <div class="stat-card">
+                <h3>My Complaints</h3>
+                <p id="totalAssigned">0</p>
+            </div>
+            <div class="stat-card">
+                <h3>⏳ Pending</h3>
+                <p id="myPending">0</p>
+            </div>
+            <div class="stat-card">
+                <h3>🔵 In Progress</h3>
+                <p id="myProgress">0</p>
+            </div>
+            <div class="stat-card">
+                <h3>✅ Resolved</h3>
+                <p id="myResolved">0</p>
+            </div>
+        </section>
+
+        <section class="complaints-panel">
+            <div class="panel-header">
+                <h2>📋 My Work Queue</h2>
+                <select id="staffFilter">
+                    <option value="All">All Status</option>
+                    <option value="Pending">Pending</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Resolved">Resolved</option>
+                </select>
+            </div>
+
+            <div id="staffComplaintList">
+                <p class="empty">Loading assigned complaints...</p>
+            </div>
+        </section>
+    </main>
+
+    <script src="http://localhost:3000/socket.io/socket.io.js"></script>
+    <script src="staff.js"></script>
+</body>
+</html>

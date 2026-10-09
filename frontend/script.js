@@ -1,4 +1,6 @@
-const socket = io("http://localhost:3000");
+
+const BACKEND_URL = "https://ai-college-complaint-system.onrender.com";
+const socket = io(BACKEND_URL);
 
 const studentName = document.getElementById("studentName");
 const rollNumber = document.getElementById("rollNumber");
@@ -7,7 +9,6 @@ const category = document.getElementById("category");
 const complaint = document.getElementById("complaint");
 const submitBtn = document.getElementById("submitBtn");
 const formMessage = document.getElementById("formMessage");
-
 const trackRollNumber = document.getElementById("trackRollNumber");
 const trackBtn = document.getElementById("trackBtn");
 const trackMessage = document.getElementById("trackMessage");
@@ -15,17 +16,21 @@ const complaintList = document.getElementById("complaintList");
 
 let trackedRollNumber = "";
 let requestNumber = 0;
+let submitting = false;
 
 function normalizeRoll(value) {
     return String(value || "").trim().toUpperCase();
 }
 
 function showMessage(element, message, isError = false) {
+    if (!element) return;
     element.textContent = message;
     element.style.color = isError ? "#dc2626" : "#16a34a";
 }
 
 submitBtn.addEventListener("click", () => {
+    if (submitting) return;
+
     const name = studentName.value.trim();
     const roll = normalizeRoll(rollNumber.value);
     const dept = department.value.trim();
@@ -38,10 +43,24 @@ submitBtn.addEventListener("click", () => {
     }
 
     if (text.length < 5) {
-        showMessage(formMessage, "Complaint must be at least 5 characters.", true);
+        showMessage(
+            formMessage,
+            "Complaint must be at least 5 characters.",
+            true
+        );
         return;
     }
 
+    if (!socket.connected) {
+        showMessage(
+            formMessage,
+            "Backend is connecting. Please try again in a moment.",
+            true
+        );
+        return;
+    }
+
+    submitting = true;
     submitBtn.disabled = true;
     submitBtn.textContent = "Submitting...";
     showMessage(formMessage, "Submitting complaint...");
@@ -74,8 +93,9 @@ async function loadMyComplaints(roll) {
 
     try {
         const response = await fetch(
-            `http://localhost:3000/api/complaints/track/${encodeURIComponent(roll)}`
+            `${BACKEND_URL}/api/complaints/track/${encodeURIComponent(roll)}`
         );
+
         const data = await response.json();
 
         if (thisRequest !== requestNumber) return;
@@ -84,12 +104,13 @@ async function loadMyComplaints(roll) {
             throw new Error(data.message || "Tracking failed.");
         }
 
-        displayComplaints(Array.isArray(data) ? data : []);
+        const items = Array.isArray(data) ? data : [];
+        displayComplaints(items);
 
         showMessage(
             trackMessage,
-            data.length
-                ? `Found ${data.length} complaint(s) for ${roll}.`
+            items.length
+                ? `Found ${items.length} complaint(s) for ${roll}.`
                 : `No complaints found for roll number ${roll}.`
         );
     } catch (error) {
@@ -111,6 +132,7 @@ async function loadMyComplaints(roll) {
 socket.on("complaintAdded", data => {
     if (!data) return;
 
+    submitting = false;
     submitBtn.disabled = false;
     submitBtn.textContent = "Submit Complaint";
 
@@ -141,15 +163,30 @@ socket.on("complaintUpdated", data => {
 });
 
 socket.on("operationError", message => {
+    submitting = false;
     submitBtn.disabled = false;
     submitBtn.textContent = "Submit Complaint";
-    showMessage(formMessage, message || "Could not save complaint.", true);
+    showMessage(
+        formMessage,
+        message || "Could not save complaint.",
+        true
+    );
 });
 
-socket.on("connect_error", () => {
-    submitBtn.disabled = false;
-    submitBtn.textContent = "Submit Complaint";
-    showMessage(formMessage, "Cannot connect to backend server.", true);
+socket.on("connect", () => {
+    console.log("Connected to complaint server.");
+});
+
+socket.on("connect_error", error => {
+    console.error("Backend connection error:", error.message);
+
+    if (!submitting) {
+        showMessage(
+            formMessage,
+            "Cannot connect to backend server. Please try again.",
+            true
+        );
+    }
 });
 
 function displayComplaints(items) {
@@ -188,7 +225,11 @@ function displayComplaints(items) {
         addDetail(card, "Status", status, statusClass);
 
         if (item.createdAt) {
-            addDetail(card, "Submitted", new Date(item.createdAt).toLocaleString());
+            addDetail(
+                card,
+                "Submitted",
+                new Date(item.createdAt).toLocaleString()
+            );
         }
 
         complaintList.appendChild(card);

@@ -1,4 +1,6 @@
-const socket = io("http://localhost:3000");
+
+const BACKEND_URL = "https://ai-college-complaint-system.onrender.com";
+const socket = io(BACKEND_URL);
 
 const adminComplaintList = document.getElementById("adminComplaintList");
 const totalComplaints = document.getElementById("totalComplaints");
@@ -18,21 +20,24 @@ const staffMembers = [
 ];
 
 socket.on("connect", () => {
-    console.log("Admin connected to server");
+    console.log("Admin connected to server.");
 });
 
-socket.on("connect_error", (error) => {
-    console.error("Connection error:", error.message);
+socket.on("connect_error", error => {
+    console.error("Admin connection error:", error.message);
 });
 
-socket.on("complaints", (data) => {
-    complaints = data;
+socket.on("complaints", data => {
+    complaints = Array.isArray(data) ? data : [];
     updateDashboard();
 });
 
-socket.on("complaintAdded", (data) => {
-    const index = complaints.findIndex(item =>
-        String(item._id || item.id) === String(data._id || data.id)
+socket.on("complaintAdded", data => {
+    if (!data) return;
+
+    const id = String(data._id || data.id);
+    const index = complaints.findIndex(
+        item => String(item._id || item.id) === id
     );
 
     if (index === -1) {
@@ -44,14 +49,25 @@ socket.on("complaintAdded", (data) => {
     updateDashboard();
 });
 
-socket.on("complaintUpdated", (data) => {
-    complaints = complaints.map(item =>
-        String(item._id || item.id) === String(data._id || data.id)
-            ? data
-            : item
+socket.on("complaintUpdated", data => {
+    if (!data) return;
+
+    const id = String(data._id || data.id);
+    const index = complaints.findIndex(
+        item => String(item._id || item.id) === id
     );
 
+    if (index === -1) {
+        complaints.unshift(data);
+    } else {
+        complaints[index] = data;
+    }
+
     updateDashboard();
+});
+
+socket.on("operationError", message => {
+    alert(message || "The operation could not be completed.");
 });
 
 filterStatus.addEventListener("change", displayComplaints);
@@ -115,18 +131,32 @@ function displayComplaints() {
         }
 
         addDetail("Student", item.studentName);
+        addDetail("Roll Number", item.rollNumber);
         addDetail("Department", item.department);
         addDetail("AI Category", item.category);
-        addDetail("AI Priority", item.priority, `priority-${(item.priority || "medium").toLowerCase()}`);
+        addDetail(
+            "AI Priority",
+            item.priority,
+            `priority-${(item.priority || "medium").toLowerCase()}`
+        );
         addDetail("Status", item.status, "status-badge");
         addDetail("Assigned Staff", item.assignedTo || "Not Assigned");
 
+        if (item.createdAt) {
+            addDetail(
+                "Submitted",
+                new Date(item.createdAt).toLocaleString()
+            );
+        }
+
         const staffLabel = document.createElement("label");
+        const complaintId = item._id || item.id;
+
         staffLabel.textContent = "Assign Staff: ";
-        staffLabel.htmlFor = `staff-${item._id}`;
+        staffLabel.htmlFor = `staff-${complaintId}`;
 
         const staffSelect = document.createElement("select");
-        staffSelect.id = `staff-${item._id}`;
+        staffSelect.id = `staff-${complaintId}`;
         staffSelect.className = "staff-select";
 
         const unassigned = document.createElement("option");
@@ -155,10 +185,21 @@ function displayComplaints() {
                 return;
             }
 
+            if (!complaintId) {
+                alert("Complaint ID missing. Refresh and try again.");
+                return;
+            }
+
+            assignButton.disabled = true;
+
             socket.emit("assignStaff", {
-                id: item._id,
+                id: complaintId,
                 assignedTo: staffSelect.value
             });
+
+            setTimeout(() => {
+                assignButton.disabled = false;
+            }, 1500);
         });
 
         const assignmentRow = document.createElement("div");
@@ -168,8 +209,9 @@ function displayComplaints() {
         const progressButton = document.createElement("button");
         progressButton.className = "progress-btn";
         progressButton.textContent = "In Progress";
-        progressButton.disabled = item.status === "In Progress" ||
-                                  item.status === "Resolved";
+        progressButton.disabled =
+            item.status === "In Progress" ||
+            item.status === "Resolved";
 
         progressButton.addEventListener("click", () => {
             updateStatus(item, "In Progress");
@@ -188,19 +230,28 @@ function displayComplaints() {
         statusRow.className = "status-buttons";
         statusRow.append(progressButton, resolveButton);
 
-        card.append(heading, details, staffLabel, assignmentRow, statusRow);
+        card.append(
+            heading,
+            details,
+            staffLabel,
+            assignmentRow,
+            statusRow
+        );
+
         adminComplaintList.appendChild(card);
     });
 }
 
 function updateStatus(item, status) {
-    if (!item._id) {
+    const id = item._id || item.id;
+
+    if (!id) {
         alert("Complaint ID missing. Refresh the page and try again.");
         return;
     }
 
     socket.emit("updateComplaint", {
-        _id: item._id,
+        _id: id,
         status
     });
 }

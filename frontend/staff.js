@@ -1,101 +1,85 @@
-const socket = io("http://localhost:3000");
 
-const staffComplaintList =
-    document.getElementById("staffComplaintList");
+const BACKEND_URL = "https://ai-college-complaint-system.onrender.com";
+const socket = io(BACKEND_URL);
 
-const totalAssigned =
-    document.getElementById("totalAssigned");
-
-const myPending =
-    document.getElementById("myPending");
-
-const myProgress =
-    document.getElementById("myProgress");
-
-const myResolved =
-    document.getElementById("myResolved");
-
-const staffFilter =
-    document.getElementById("staffFilter");
+const staffComplaintList = document.getElementById("staffComplaintList");
+const totalAssigned = document.getElementById("totalAssigned");
+const myPending = document.getElementById("myPending");
+const myProgress = document.getElementById("myProgress");
+const myResolved = document.getElementById("myResolved");
+const staffFilter = document.getElementById("staffFilter");
 
 let complaints = [];
 
 /*
   Demo mode:
-  Select which staff member's work queue to view.
+  The staff query parameter selects whose work queue to display.
   This is a demo filter, not authentication.
 */
 const params = new URLSearchParams(window.location.search);
-
 const staffName = params.get("staff") || "Lab Technician";
 
-const staffLabel = document.createElement("p");
-staffLabel.style.color = "#00a8e1";
-staffLabel.style.marginTop = "10px";
-staffLabel.textContent = "Viewing work queue: " + staffName;
+const welcome = document.querySelector(".welcome");
 
-document.querySelector(".welcome").appendChild(staffLabel);
+if (welcome) {
+    const staffLabel = document.createElement("p");
+    staffLabel.style.color = "#00a8e1";
+    staffLabel.style.marginTop = "10px";
+    staffLabel.textContent = "Viewing work queue: " + staffName;
+    welcome.appendChild(staffLabel);
+}
 
+socket.on("connect", () => {
+    console.log("Staff dashboard connected to server.");
+});
 
-/* Receive saved complaints */
+socket.on("connect_error", error => {
+    console.error("Staff connection error:", error.message);
+});
 
 socket.on("complaints", data => {
-    complaints = data;
+    complaints = Array.isArray(data) ? data : [];
     updateDashboard();
 });
 
-
-/* Receive new complaints */
-
 socket.on("complaintAdded", data => {
+    if (!data) return;
+
+    const id = String(data._id || data.id);
     complaints = complaints.filter(
-        item => String(item._id) !== String(data._id)
+        item => String(item._id || item.id) !== id
     );
 
     complaints.unshift(data);
     updateDashboard();
 });
 
-
-/* Receive status or staff assignment updates */
-
 socket.on("complaintUpdated", data => {
+    if (!data) return;
+
+    const id = String(data._id || data.id);
     const index = complaints.findIndex(
-        item => String(item._id) === String(data._id)
+        item => String(item._id || item.id) === id
     );
 
-    if (index !== -1) {
-        complaints[index] = data;
-    } else {
+    if (index === -1) {
         complaints.push(data);
+    } else {
+        complaints[index] = data;
     }
 
     updateDashboard();
 });
 
-
-/* Show server-side errors */
-
 socket.on("operationError", message => {
-    alert(message);
+    alert(message || "The operation could not be completed.");
 });
-
-
-/* Status filter */
 
 staffFilter.addEventListener("change", displayComplaints);
 
-
-/* Only show complaints assigned to this staff member */
-
 function getMyComplaints() {
-    return complaints.filter(
-        item => item.assignedTo === staffName
-    );
+    return complaints.filter(item => item.assignedTo === staffName);
 }
-
-
-/* Update statistics */
 
 function updateDashboard() {
     const mine = getMyComplaints();
@@ -117,12 +101,8 @@ function updateDashboard() {
     displayComplaints();
 }
 
-
-/* Display assigned complaints */
-
 function displayComplaints() {
     const mine = getMyComplaints();
-
     const selectedStatus = staffFilter.value;
 
     const filtered = selectedStatus === "All"
@@ -134,8 +114,7 @@ function displayComplaints() {
     if (filtered.length === 0) {
         const empty = document.createElement("p");
         empty.className = "empty";
-        empty.textContent =
-            "No complaints assigned to " + staffName + ".";
+        empty.textContent = "No complaints assigned to " + staffName + ".";
         staffComplaintList.appendChild(empty);
         return;
     }
@@ -145,7 +124,7 @@ function displayComplaints() {
         card.className = "staff-complaint-card";
 
         const title = document.createElement("h3");
-        title.textContent = item.complaint;
+        title.textContent = item.complaint || "Complaint";
 
         const details = document.createElement("div");
 
@@ -158,15 +137,14 @@ function displayComplaints() {
             const span = document.createElement("span");
             span.textContent = value || "Not available";
 
-            if (className) {
-                span.className = className;
-            }
+            if (className) span.className = className;
 
             row.append(strong, span);
             details.appendChild(row);
         }
 
         addDetail("Student", item.studentName);
+        addDetail("Roll Number", item.rollNumber);
         addDetail("Department", item.department);
         addDetail("Category", item.category);
 
@@ -182,7 +160,11 @@ function displayComplaints() {
             "Resolved": "status-resolved"
         }[item.status] || "status-pending";
 
-        addDetail("Status", item.status, "status-badge " + statusClass);
+        addDetail(
+            "Status",
+            item.status || "Pending",
+            "status-badge " + statusClass
+        );
 
         const actions = document.createElement("div");
         actions.className = "staff-actions";
@@ -209,22 +191,20 @@ function displayComplaints() {
 
         actions.append(startButton, resolveButton);
         card.append(title, details, actions);
-
         staffComplaintList.appendChild(card);
     });
 }
 
-
-/* Update status in MongoDB through the backend */
-
 function updateStatus(item, status) {
-    if (!item._id) {
+    const id = item._id || item.id;
+
+    if (!id) {
         alert("Complaint ID missing. Refresh the page and try again.");
         return;
     }
 
     socket.emit("updateComplaint", {
-        _id: item._id,
+        _id: id,
         status
     });
 }

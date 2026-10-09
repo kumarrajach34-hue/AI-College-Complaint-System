@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#101820">
     <title>Staff Dashboard | AI College</title>
     <link rel="stylesheet" href="staff.css">
 </head>
@@ -19,6 +20,19 @@
         <section class="welcome">
             <h2>Assigned Complaints</h2>
             <p>View assigned issues and update their progress.</p>
+
+            <label for="staffMember">Select your staff role:</label>
+            <select id="staffMember">
+                <option value="Lab Technician">Lab Technician</option>
+                <option value="Electrical Technician">Electrical Technician</option>
+                <option value="Maintenance Staff">Maintenance Staff</option>
+                <option value="Housekeeping Staff">Housekeeping Staff</option>
+                <option value="IT Support">IT Support</option>
+            </select>
+
+            <p id="connectionMessage" role="status">
+                Connecting to complaint server...
+            </p>
         </section>
 
         <section class="stats">
@@ -43,6 +57,7 @@
         <section class="complaints-panel">
             <div class="panel-header">
                 <h2>📋 My Work Queue</h2>
+                <label for="staffFilter">Filter:</label>
                 <select id="staffFilter">
                     <option value="All">All Status</option>
                     <option value="Pending">Pending</option>
@@ -51,13 +66,13 @@
                 </select>
             </div>
 
-            <div id="staffComplaintList">
-                <p class="empty">Loading assigned complaints...</p>
+            <div id="staffComplaintList" aria-live="polite">
+                <p class="empty">Connecting to complaint server...</p>
             </div>
         </section>
     </main>
 
-    <script src="http://localhost:3000/socket.io/socket.io.js"></script>
+    <script src="https://ai-college-complaint-system.onrender.com/socket.io/socket.io.js"></script>
     <script src="staff.js"></script>
 </body>
 </html>

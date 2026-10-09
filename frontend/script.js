@@ -1,4 +1,3 @@
-
 const BACKEND_URL = "https://ai-college-complaint-system.onrender.com";
 const socket = io(BACKEND_URL);
 
@@ -28,67 +27,64 @@ function showMessage(element, message, isError = false) {
     element.style.color = isError ? "#dc2626" : "#16a34a";
 }
 
-submitBtn.addEventListener("click", () => {
-    if (submitting) return;
+if (submitBtn) {
+    submitBtn.addEventListener("click", () => {
+        if (submitting) return;
 
-    const name = studentName.value.trim();
-    const roll = normalizeRoll(rollNumber.value);
-    const dept = department.value.trim();
-    const cat = category.value;
-    const text = complaint.value.trim();
+        const name = studentName?.value.trim();
+        const roll = normalizeRoll(rollNumber?.value);
+        const dept = department?.value.trim();
+        const cat = category?.value;
+        const text = complaint?.value.trim();
 
-    if (!name || !roll || !dept || !cat || !text) {
-        showMessage(formMessage, "Please fill in all fields.", true);
-        return;
-    }
+        if (!name || !roll || !dept || !cat || !text) {
+            showMessage(formMessage, "Please fill in all fields.", true);
+            return;
+        }
 
-    if (text.length < 5) {
-        showMessage(
-            formMessage,
-            "Complaint must be at least 5 characters.",
-            true
-        );
-        return;
-    }
+        if (text.length < 5) {
+            showMessage(formMessage, "Complaint must be at least 5 characters.", true);
+            return;
+        }
 
-    if (!socket.connected) {
-        showMessage(
-            formMessage,
-            "Backend is connecting. Please try again in a moment.",
-            true
-        );
-        return;
-    }
+        if (!socket.connected) {
+            showMessage(formMessage, "Cannot connect to backend. Please wait and try again.", true);
+            return;
+        }
 
-    submitting = true;
-    submitBtn.disabled = true;
-    submitBtn.textContent = "Submitting...";
-    showMessage(formMessage, "Submitting complaint...");
+        submitting = true;
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Submitting...";
+        showMessage(formMessage, "Submitting complaint...");
 
-    socket.emit("newComplaint", {
-        studentName: name,
-        rollNumber: roll,
-        department: dept,
-        category: cat,
-        complaint: text
+        socket.emit("newComplaint", {
+            studentName: name,
+            rollNumber: roll,
+            department: dept,
+            category: cat,
+            complaint: text
+        });
     });
-});
+}
 
-trackBtn.addEventListener("click", () => {
-    const roll = normalizeRoll(trackRollNumber.value);
+if (trackBtn) {
+    trackBtn.addEventListener("click", () => {
+        const roll = normalizeRoll(trackRollNumber?.value);
 
-    if (!roll) {
-        showMessage(trackMessage, "Please enter your roll number.", true);
-        return;
-    }
+        if (!roll) {
+            showMessage(trackMessage, "Please enter your roll number.", true);
+            return;
+        }
 
-    trackedRollNumber = roll;
-    loadMyComplaints(roll);
-});
+        trackedRollNumber = roll;
+        loadMyComplaints(roll);
+    });
+}
 
 async function loadMyComplaints(roll) {
-    const thisRequest = ++requestNumber;
-    trackBtn.disabled = true;
+    const currentRequest = ++requestNumber;
+
+    if (trackBtn) trackBtn.disabled = true;
     showMessage(trackMessage, "Searching complaints...");
 
     try {
@@ -98,7 +94,7 @@ async function loadMyComplaints(roll) {
 
         const data = await response.json();
 
-        if (thisRequest !== requestNumber) return;
+        if (currentRequest !== requestNumber) return;
 
         if (!response.ok) {
             throw new Error(data.message || "Tracking failed.");
@@ -114,8 +110,8 @@ async function loadMyComplaints(roll) {
                 : `No complaints found for roll number ${roll}.`
         );
     } catch (error) {
-        if (thisRequest === requestNumber) {
-            complaintList.replaceChildren();
+        if (currentRequest === requestNumber) {
+            if (complaintList) complaintList.replaceChildren();
             showMessage(
                 trackMessage,
                 error.message || "Could not load complaints.",
@@ -123,24 +119,30 @@ async function loadMyComplaints(roll) {
             );
         }
     } finally {
-        if (thisRequest === requestNumber) {
+        if (currentRequest === requestNumber && trackBtn) {
             trackBtn.disabled = false;
         }
     }
 }
 
 socket.on("complaintAdded", data => {
-    if (!data) return;
-
     submitting = false;
-    submitBtn.disabled = false;
-    submitBtn.textContent = "Submit Complaint";
 
-    studentName.value = "";
-    rollNumber.value = "";
-    department.value = "";
-    category.value = "";
-    complaint.value = "";
+    if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Submit Complaint";
+    }
+
+    if (!data) {
+        showMessage(formMessage, "Server response was empty. Check the complaint status.", true);
+        return;
+    }
+
+    if (studentName) studentName.value = "";
+    if (rollNumber) rollNumber.value = "";
+    if (department) department.value = "";
+    if (category) category.value = "";
+    if (complaint) complaint.value = "";
 
     showMessage(formMessage, "Complaint submitted successfully!");
 
@@ -164,11 +166,17 @@ socket.on("complaintUpdated", data => {
 
 socket.on("operationError", message => {
     submitting = false;
-    submitBtn.disabled = false;
-    submitBtn.textContent = "Submit Complaint";
+
+    if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Submit Complaint";
+    }
+
     showMessage(
         formMessage,
-        message || "Could not save complaint.",
+        typeof message === "string"
+            ? message
+            : "Could not save complaint. Please try again.",
         true
     );
 });
@@ -189,7 +197,13 @@ socket.on("connect_error", error => {
     }
 });
 
+socket.on("disconnect", () => {
+    console.log("Disconnected from complaint server.");
+});
+
 function displayComplaints(items) {
+    if (!complaintList) return;
+
     complaintList.replaceChildren();
 
     if (items.length === 0) {
@@ -238,13 +252,16 @@ function displayComplaints(items) {
 
 function addDetail(card, label, value, className = "") {
     const row = document.createElement("p");
+
     const strong = document.createElement("strong");
-    strong.textContent = label + ": ";
+    strong.textContent = `${label}: `;
 
     const span = document.createElement("span");
     span.textContent = value || "Not available";
 
-    if (className) span.className = className;
+    if (className) {
+        span.className = className;
+    }
 
     row.append(strong, span);
     card.appendChild(row);

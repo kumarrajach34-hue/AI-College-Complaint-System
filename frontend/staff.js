@@ -2,209 +2,227 @@
 const BACKEND_URL = "https://ai-college-complaint-system.onrender.com";
 const socket = io(BACKEND_URL);
 
-const staffComplaintList = document.getElementById("staffComplaintList");
-const totalAssigned = document.getElementById("totalAssigned");
-const myPending = document.getElementById("myPending");
-const myProgress = document.getElementById("myProgress");
-const myResolved = document.getElementById("myResolved");
-const staffFilter = document.getElementById("staffFilter");
+const studentName = document.getElementById("studentName");
+const rollNumber = document.getElementById("rollNumber");
+const department = document.getElementById("department");
+const category = document.getElementById("category");
+const complaint = document.getElementById("complaint");
+const submitBtn = document.getElementById("submitBtn");
+const formMessage = document.getElementById("formMessage");
+const trackRollNumber = document.getElementById("trackRollNumber");
+const trackBtn = document.getElementById("trackBtn");
+const trackMessage = document.getElementById("trackMessage");
+const complaintList = document.getElementById("complaintList");
 
-let complaints = [];
+let trackedRollNumber = "";
+let requestNumber = 0;
+let submitting = false;
 
-/*
-  Demo mode:
-  The staff query parameter selects whose work queue to display.
-  This is a demo filter, not authentication.
-*/
-const params = new URLSearchParams(window.location.search);
-const staffName = params.get("staff") || "Lab Technician";
-
-const welcome = document.querySelector(".welcome");
-
-if (welcome) {
-    const staffLabel = document.createElement("p");
-    staffLabel.style.color = "#00a8e1";
-    staffLabel.style.marginTop = "10px";
-    staffLabel.textContent = "Viewing work queue: " + staffName;
-    welcome.appendChild(staffLabel);
+function normalizeRoll(value) {
+    return String(value || "").trim().toUpperCase();
 }
 
-socket.on("connect", () => {
-    console.log("Staff dashboard connected to server.");
-});
+function showMessage(element, message, isError = false) {
+    if (!element) return;
+    element.textContent = message;
+    element.style.color = isError ? "#dc2626" : "#16a34a";
+}
 
-socket.on("connect_error", error => {
-    console.error("Staff connection error:", error.message);
-});
+if (submitBtn) {
+    submitBtn.addEventListener("click", () => {
+        if (submitting) return;
 
-socket.on("complaints", data => {
-    complaints = Array.isArray(data) ? data : [];
-    updateDashboard();
-});
+        const name = studentName.value.trim();
+        const roll = normalizeRoll(rollNumber.value);
+        const dept = department.value.trim();
+        const cat = category.value;
+        const text = complaint.value.trim();
+
+        if (!name || !roll || !dept || !cat || !text) {
+            showMessage(formMessage, "Please fill in all fields.", true);
+            return;
+        }
+
+        if (text.length < 5) {
+            showMessage(formMessage, "Complaint must be at least 5 characters.", true);
+            return;
+        }
+
+        if (!socket.connected) {
+            showMessage(formMessage, "Backend is connecting. Please try again shortly.", true);
+            return;
+        }
+
+        submitting = true;
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Submitting...";
+        showMessage(formMessage, "Submitting complaint...");
+
+        socket.emit("newComplaint", {
+            studentName: name,
+            rollNumber: roll,
+            department: dept,
+            category: cat,
+            complaint: text
+        });
+    });
+}
+
+if (trackBtn) {
+    trackBtn.addEventListener("click", () => {
+        const roll = normalizeRoll(trackRollNumber.value);
+
+        if (!roll) {
+            showMessage(trackMessage, "Please enter your roll number.", true);
+            return;
+        }
+
+        trackedRollNumber = roll;
+        loadMyComplaints(roll);
+    });
+}
+
+async function loadMyComplaints(roll) {
+    const thisRequest = ++requestNumber;
+    if (trackBtn) trackBtn.disabled = true;
+    showMessage(trackMessage, "Searching complaints...");
+
+    try {
+        const response = await fetch(
+            `${BACKEND_URL}/api/complaints/track/${encodeURIComponent(roll)}`
+        );
+
+        const data = await response.json();
+
+        if (thisRequest !== requestNumber) return;
+        if (!response.ok) {
+            throw new Error(data.message || "Tracking failed.");
+        }
+
+        const items = Array.isArray(data) ? data : [];
+        displayComplaints(items);
+
+        showMessage(
+            trackMessage,
+            items.length
+                ? `Found ${items.length} complaint(s) for ${roll}.`
+                : `No complaints found for roll number ${roll}.`
+        );
+    } catch (error) {
+        if (thisRequest === requestNumber) {
+            if (complaintList) complaintList.replaceChildren();
+            showMessage(trackMessage, error.message || "Could not load complaints.", true);
+        }
+    } finally {
+        if (thisRequest === requestNumber && trackBtn) {
+            trackBtn.disabled = false;
+        }
+    }
+}
 
 socket.on("complaintAdded", data => {
     if (!data) return;
 
-    const id = String(data._id || data.id);
-    complaints = complaints.filter(
-        item => String(item._id || item.id) !== id
-    );
+    submitting = false;
+    if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Submit Complaint";
+    }
 
-    complaints.unshift(data);
-    updateDashboard();
+    if (studentName) studentName.value = "";
+    if (rollNumber) rollNumber.value = "";
+    if (department) department.value = "";
+    if (category) category.value = "";
+    if (complaint) complaint.value = "";
+
+    showMessage(formMessage, "Complaint submitted successfully!");
+
+    if (trackedRollNumber && normalizeRoll(data.rollNumber) === trackedRollNumber) {
+        loadMyComplaints(trackedRollNumber);
+    }
 });
 
 socket.on("complaintUpdated", data => {
-    if (!data) return;
-
-    const id = String(data._id || data.id);
-    const index = complaints.findIndex(
-        item => String(item._id || item.id) === id
-    );
-
-    if (index === -1) {
-        complaints.push(data);
-    } else {
-        complaints[index] = data;
+    if (data && trackedRollNumber &&
+        normalizeRoll(data.rollNumber) === trackedRollNumber) {
+        loadMyComplaints(trackedRollNumber);
     }
-
-    updateDashboard();
 });
 
 socket.on("operationError", message => {
-    alert(message || "The operation could not be completed.");
+    submitting = false;
+    if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Submit Complaint";
+    }
+    showMessage(formMessage, message || "Could not save complaint.", true);
 });
 
-staffFilter.addEventListener("change", displayComplaints);
+socket.on("connect", () => {
+    console.log("Connected to complaint server.");
+});
 
-function getMyComplaints() {
-    return complaints.filter(item => item.assignedTo === staffName);
-}
+socket.on("connect_error", error => {
+    console.error("Backend connection error:", error.message);
+    if (!submitting) {
+        showMessage(formMessage, "Cannot connect to backend server. Please try again.", true);
+    }
+});
 
-function updateDashboard() {
-    const mine = getMyComplaints();
+function displayComplaints(items) {
+    if (!complaintList) return;
+    complaintList.replaceChildren();
 
-    totalAssigned.textContent = mine.length;
-
-    myPending.textContent = mine.filter(
-        item => item.status === "Pending"
-    ).length;
-
-    myProgress.textContent = mine.filter(
-        item => item.status === "In Progress"
-    ).length;
-
-    myResolved.textContent = mine.filter(
-        item => item.status === "Resolved"
-    ).length;
-
-    displayComplaints();
-}
-
-function displayComplaints() {
-    const mine = getMyComplaints();
-    const selectedStatus = staffFilter.value;
-
-    const filtered = selectedStatus === "All"
-        ? mine
-        : mine.filter(item => item.status === selectedStatus);
-
-    staffComplaintList.replaceChildren();
-
-    if (filtered.length === 0) {
+    if (items.length === 0) {
         const empty = document.createElement("p");
         empty.className = "empty";
-        empty.textContent = "No complaints assigned to " + staffName + ".";
-        staffComplaintList.appendChild(empty);
+        empty.textContent = "No complaints found for this roll number.";
+        complaintList.appendChild(empty);
         return;
     }
 
-    filtered.forEach(item => {
+    items.forEach(item => {
         const card = document.createElement("div");
-        card.className = "staff-complaint-card";
+        card.className = "complaint-card";
 
         const title = document.createElement("h3");
-        title.textContent = item.complaint || "Complaint";
+        title.textContent = item.complaint || "Untitled complaint";
+        card.appendChild(title);
 
-        const details = document.createElement("div");
+        addDetail(card, "Roll Number", item.rollNumber);
+        addDetail(card, "Student", item.studentName);
+        addDetail(card, "Department", item.department);
+        addDetail(card, "Category", item.category);
+        addDetail(card, "Priority", item.priority);
+        addDetail(card, "Assigned Staff", item.assignedTo);
 
-        function addDetail(label, value, className = "") {
-            const row = document.createElement("p");
-
-            const strong = document.createElement("strong");
-            strong.textContent = label + ": ";
-
-            const span = document.createElement("span");
-            span.textContent = value || "Not available";
-
-            if (className) span.className = className;
-
-            row.append(strong, span);
-            details.appendChild(row);
-        }
-
-        addDetail("Student", item.studentName);
-        addDetail("Roll Number", item.rollNumber);
-        addDetail("Department", item.department);
-        addDetail("Category", item.category);
-
-        addDetail(
-            "Priority",
-            item.priority,
-            "priority-" + (item.priority || "medium").toLowerCase()
-        );
-
+        const status = item.status || "Pending";
         const statusClass = {
             "Pending": "status-pending",
             "In Progress": "status-progress",
             "Resolved": "status-resolved"
-        }[item.status] || "status-pending";
+        }[status] || "";
 
-        addDetail(
-            "Status",
-            item.status || "Pending",
-            "status-badge " + statusClass
-        );
+        addDetail(card, "Status", status, statusClass);
 
-        const actions = document.createElement("div");
-        actions.className = "staff-actions";
+        if (item.createdAt) {
+            addDetail(card, "Submitted", new Date(item.createdAt).toLocaleString());
+        }
 
-        const startButton = document.createElement("button");
-        startButton.className = "start-btn";
-        startButton.textContent = "🔄 Start Work";
-        startButton.disabled =
-            item.status === "In Progress" ||
-            item.status === "Resolved";
-
-        startButton.addEventListener("click", () => {
-            updateStatus(item, "In Progress");
-        });
-
-        const resolveButton = document.createElement("button");
-        resolveButton.className = "resolve-btn";
-        resolveButton.textContent = "✅ Mark Resolved";
-        resolveButton.disabled = item.status === "Resolved";
-
-        resolveButton.addEventListener("click", () => {
-            updateStatus(item, "Resolved");
-        });
-
-        actions.append(startButton, resolveButton);
-        card.append(title, details, actions);
-        staffComplaintList.appendChild(card);
+        complaintList.appendChild(card);
     });
 }
 
-function updateStatus(item, status) {
-    const id = item._id || item.id;
+function addDetail(card, label, value, className = "") {
+    const row = document.createElement("p");
+    const strong = document.createElement("strong");
+    strong.textContent = label + ": ";
 
-    if (!id) {
-        alert("Complaint ID missing. Refresh the page and try again.");
-        return;
-    }
+    const span = document.createElement("span");
+    span.textContent = value || "Not available";
 
-    socket.emit("updateComplaint", {
-        _id: id,
-        status
-    });
+    if (className) span.className = className;
+
+    row.append(strong, span);
+    card.appendChild(row);
 }

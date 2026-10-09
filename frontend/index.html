@@ -3,61 +3,88 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI College Complaint Management</title>
+    <title>AI College Complaint Management System</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
         <header class="main-header">
-            <h1>🎓 AI College Complaint Management</h1>
+            <h1>AI College Complaint Management</h1>
             <p>Report • Track • Resolve</p>
         </header>
 
         <section class="attendance-box">
             <h2>Submit a Complaint</h2>
 
-            <input id="studentName" type="text"
-                   placeholder="Student Name" required>
+            <form id="complaintForm">
+                <input
+                    type="text"
+                    id="studentName"
+                    placeholder="Student Name"
+                    required
+                >
 
-            <input id="rollNumber" type="text"
-                   placeholder="College Roll Number (e.g. 23CSE001)" required>
+                <input
+                    type="text"
+                    id="rollNumber"
+                    placeholder="College Roll Number (e.g. 23CS001)"
+                    required
+                >
 
-            <input id="department" type="text"
-                   placeholder="Department (e.g. CSE, ECE)" required>
+                <input
+                    type="text"
+                    id="department"
+                    placeholder="Department (e.g. CSE, ECE)"
+                    required
+                >
 
-            <select id="category" required>
-                <option value="">Select Category</option>
-                <option value="Infrastructure">Infrastructure</option>
-                <option value="Electrical">Electrical</option>
-                <option value="Equipment">Equipment</option>
-                <option value="Cleanliness">Cleanliness</option>
-                <option value="Other">Other</option>
-            </select>
+                <select id="category" required>
+                    <option value="">Select Category</option>
+                    <option value="Classroom">Classroom</option>
+                    <option value="Faculty">Faculty</option>
+                    <option value="Infrastructure">Infrastructure</option>
+                    <option value="Hostel">Hostel</option>
+                    <option value="Transport">Transport</option>
+                    <option value="Library">Library</option>
+                    <option value="Examination">Examination</option>
+                    <option value="Other">Other</option>
+                </select>
 
-            <textarea id="complaint" rows="4"
-                      placeholder="Describe your complaint..." required></textarea>
+                <textarea
+                    id="complaint"
+                    rows="4"
+                    placeholder="Describe your complaint..."
+                    required
+                ></textarea>
 
-            <button id="submitBtn" type="button">Submit Complaint</button>
-            <p id="formMessage" role="status"></p>
+                <button id="submitBtn" type="submit">
+                    Submit Complaint
+                </button>
+
+                <p id="formMessage" role="status" aria-live="polite"></p>
+            </form>
         </section>
 
         <section class="tracking-box">
-            <h2>📋 Track My Complaints</h2>
-            <p>Enter your college roll number to see your complaints.</p>
+            <h2>Track Your Complaint</h2>
 
-            <input id="trackRollNumber" type="text"
-                   placeholder="Enter College Roll Number">
+            <input
+                type="text"
+                id="trackRollNumber"
+                placeholder="Enter your college roll number"
+            >
 
-            <button id="trackBtn" type="button">Track Complaints</button>
-            <p id="trackMessage" role="status"></p>
+            <button id="trackBtn" type="button">
+                Track Complaint
+            </button>
 
-            <div id="complaintList">
-                <p class="empty">Enter your roll number to track complaints.</p>
-            </div>
+            <p id="trackMessage" role="status" aria-live="polite"></p>
+            <div id="complaintList"></div>
         </section>
     </div>
 
-    <script src="http://localhost:3000/socket.io/socket.io.js"></script>
+    <!-- Load Socket.IO from the deployed Render backend -->
+    <script src="https://ai-college-complaint-system.onrender.com/socket.io/socket.io.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
